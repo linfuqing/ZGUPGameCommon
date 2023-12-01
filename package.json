@@ -1,0 +1,14 @@
+{
+  "name": "cn.com.zerogame.unitypackages.game.common",
+  "displayName": "ZGUP Game Common",
+  "version": "2.10.26",
+  "unity": "2022.2",
+  "unityRelease": "0f1",
+  "dependencies": {
+    "cn.com.zerogame.unitypackages": "2.2.1"
+  },
+  "description": "Zero Game Unity Package Game Common",
+  "keywords": [
+    "zg"
+  ]
+}
