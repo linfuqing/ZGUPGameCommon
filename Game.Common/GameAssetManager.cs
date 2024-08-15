@@ -173,6 +173,8 @@ public class GameAssetManager : MonoBehaviour
         private set;
     }
 
+    public bool isSceneLoading => __sceneCoroutineIndex != -1;
+
     public float speed => __tachometer.value;
 
     public string sceneName
@@ -403,7 +405,7 @@ public class GameAssetManager : MonoBehaviour
                 yield return unzipper.Execute(__Unzip);
         }
 
-        string streamingAssetsPath = Application.streamingAssetsPath, folder;
+        string folder;
         AssetPath path;
         var assetPaths = new ZG.AssetPath[length];
         for (i = 0; i < length; ++i)
@@ -516,7 +518,7 @@ public class GameAssetManager : MonoBehaviour
 
         progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.LoadScene, coroutineIndex);
 
-        //等待断开连接的对象调用OnDestroy
+        //绛夊緟鏂紑杩炴帴鐨勫璞¤皟鐢∣nDestroy
         yield return null;
 
         while (this.nextSceneName != null)
@@ -533,7 +535,7 @@ public class GameAssetManager : MonoBehaviour
                 }
                 //yield return SceneManager.UnloadSceneAsync(Path.GetFileNameWithoutExtension(sceneName), UnloadSceneOptions.UnloadAllEmbeddedSceneObjects);
 
-                //等待场景对象调用OnDestroy
+                //绛夊緟鍦烘櫙瀵硅薄璋冪敤OnDestroy
                 yield return null;
 
                 if (__assetManager != null)
