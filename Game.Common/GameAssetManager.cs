@@ -242,7 +242,7 @@ public class GameAssetManager : MonoBehaviour
         }
     }
 
-    public IEnumerator Init(string defaultSceneName, string scenePath, string path, string url)
+    public IEnumerator Init(string defaultSceneName, string scenePath, string path, string url, IAssetBundleFactory factory = null)
     {
         var progressBar = GameProgressbar.instance;
         progressBar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
@@ -250,7 +250,7 @@ public class GameAssetManager : MonoBehaviour
         string language = GameLanguage.overrideLanguage;
 
         string persistentDataPath = Path.Combine(Application.persistentDataPath, language);
-        __assetManager = new AssetManager(Path.Combine(persistentDataPath, path));
+        __assetManager = new AssetManager(Path.Combine(persistentDataPath, path), factory);
 
         string assetURL = url == null ? null : $"{url}/{Application.platform}/{language}";
         //yield return __LoadAssets(resourcesURL, path, scenePath);
