@@ -40,10 +40,13 @@ public class GameAssetManager : MonoBehaviour
 
         public static IEnumerator Start(AssetManager assetManager, string format)
         {
+            Verifier verifier = default;
+
+#if UNITY_WEBGL
+            assetManager.Verify(verifier.__Change);
+#else
             var progressbar = GameProgressbar.instance;
             progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Verify);
-
-            Verifier verifier = default;
 
             using (var task = Task.Run(() => assetManager.Verify(verifier.__Change)))
             {
@@ -57,6 +60,7 @@ public class GameAssetManager : MonoBehaviour
             }
 
             progressbar.ClearProgressBar();
+#endif
         }
 
         public string ToString(string format)
