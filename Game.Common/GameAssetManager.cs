@@ -164,6 +164,7 @@ public class GameAssetManager : MonoBehaviour
     private bool __isConfirm;
 
     private int __sceneCoroutineIndex = -1;
+    private Action __onSceneLoadedComplete;
     private Coroutine __assetCoroutine;
 
     private Tachometer __tachometer;
@@ -265,9 +266,11 @@ public class GameAssetManager : MonoBehaviour
 
         //world = WorldUtility.GetOrCreateWorld("Client");
 
+        __onSceneLoadedComplete = null;
+        
         nextSceneName = defaultSceneName;
 
-        yield return __LoadScene(-1, null);
+        yield return __LoadScene(-1);
 
         progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
@@ -286,11 +289,16 @@ public class GameAssetManager : MonoBehaviour
         return true;
     }
 
-    public void LoadScene(string name, Action onComplete)
+    public bool LoadScene(string name, Action onComplete)
     {
-        StopLoadingScene();
+        if (nextSceneName == name || string.IsNullOrEmpty(nextSceneName) && sceneName == name)
+            return false;
+
+        //StopLoadingScene();
 
         nextSceneName = name;
+
+        __onSceneLoadedComplete = onComplete;
 
         if (__sceneCoroutineIndex == -1)
         {
@@ -298,10 +306,12 @@ public class GameAssetManager : MonoBehaviour
 
             __sceneCoroutineIndex = progressbar.BeginCoroutine();
 
-            var coroutine = StartCoroutine(__LoadScene(__sceneCoroutineIndex, onComplete));
+            var coroutine = StartCoroutine(__LoadScene(__sceneCoroutineIndex));
 
             progressbar.EndCoroutine(__sceneCoroutineIndex, coroutine);
         }
+
+        return true;
     }
 
     public void LoadAssets(
@@ -510,7 +520,7 @@ public class GameAssetManager : MonoBehaviour
         __assetCoroutine = null;
     }
 
-    private IEnumerator __LoadScene(int coroutineIndex, Action onComplete)
+    private IEnumerator __LoadScene(int coroutineIndex)
     {
         var progressbar = GameProgressbar.instance;
 
@@ -531,16 +541,22 @@ public class GameAssetManager : MonoBehaviour
             if (!string.IsNullOrEmpty(sceneName))
             {
                 var scene = SceneManager.GetSceneByName(Path.GetFileNameWithoutExtension(sceneName));
-                var gameObjects = scene.IsValid() ? scene.GetRootGameObjects() : null;
-                if(gameObjects != null)
+                if (scene.IsValid())
                 {
-                    foreach (var gameObject in gameObjects)
-                        Destroy(gameObject);
-                }
-                //yield return SceneManager.UnloadSceneAsync(Path.GetFileNameWithoutExtension(sceneName), UnloadSceneOptions.UnloadAllEmbeddedSceneObjects);
+                    while (!scene.isLoaded)
+                        yield return null;
 
-                //等待场景对象调用OnDestroy
-                yield return null;
+                    var gameObjects = scene.GetRootGameObjects();
+                    if (gameObjects != null)
+                    {
+                        foreach (var gameObject in gameObjects)
+                            Destroy(gameObject);
+                    }
+                    //yield return SceneManager.UnloadSceneAsync(Path.GetFileNameWithoutExtension(sceneName), UnloadSceneOptions.UnloadAllEmbeddedSceneObjects);
+
+                    //等待场景对象调用OnDestroy
+                    yield return null;
+                }
 
                 if (__assetManager != null)
                     __assetManager.UnloadAssetBundle(sceneName);
@@ -581,9 +597,13 @@ public class GameAssetManager : MonoBehaviour
         if (coroutineIndex == __sceneCoroutineIndex)
             __sceneCoroutineIndex = -1;
 
-        if (onComplete != null)
-            onComplete();
+        if (__onSceneLoadedComplete != null)
+        {
+            __onSceneLoadedComplete();
 
+            __onSceneLoadedComplete = null;
+        }
+        
         /*if (progressbarInfo.loadScene != null)
             progressbarInfo.loadScene.SetActive(false);*/
     }
