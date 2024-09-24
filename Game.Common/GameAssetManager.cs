@@ -291,14 +291,17 @@ public class GameAssetManager : MonoBehaviour
 
     public bool LoadScene(string name, Action onComplete)
     {
-        if (nextSceneName == name || string.IsNullOrEmpty(nextSceneName) && sceneName == name)
+        if (string.IsNullOrEmpty(nextSceneName) && sceneName == name)
             return false;
+        
+        __onSceneLoadedComplete = onComplete;
+        
+        if (nextSceneName == name)
+            return true;
 
         //StopLoadingScene();
 
         nextSceneName = name;
-
-        __onSceneLoadedComplete = onComplete;
 
         if (__sceneCoroutineIndex == -1)
         {
@@ -587,6 +590,8 @@ public class GameAssetManager : MonoBehaviour
             //Caching.ClearCache();
 
             yield return Resources.UnloadUnusedAssets();
+            
+            GC.Collect();
 
             if (nextSceneName == this.nextSceneName)
                 this.nextSceneName = null;
