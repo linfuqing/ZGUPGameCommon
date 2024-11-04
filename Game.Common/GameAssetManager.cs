@@ -44,6 +44,8 @@ public class GameAssetManager : MonoBehaviour
 
 #if UNITY_WEBGL
             assetManager.Verify(verifier.__Change);
+
+            return null;
 #else
             var progressbar = GameProgressbar.instance;
             progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Verify);
