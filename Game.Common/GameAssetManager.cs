@@ -249,7 +249,12 @@ public class GameAssetManager : MonoBehaviour
         }
     }
 
-    public IEnumerator Init(string defaultSceneName, string scenePath, string path, string url, IAssetBundleFactory factory = null)
+    public IEnumerator Init(
+        string defaultSceneName, 
+        string path, 
+        string url, 
+        IAssetBundleFactory factory = null, 
+        params AssetPath[] paths)
     {
         var progressBar = GameProgressbar.instance;
         progressBar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
@@ -262,7 +267,7 @@ public class GameAssetManager : MonoBehaviour
         string assetURL = url == null ? null : $"{url}/{Application.platform}/{language}";
         //yield return __LoadAssets(resourcesURL, path, scenePath);
 
-        yield return __LoadAssets(assetURL, new AssetPath[] { new AssetPath(scenePath, language) }, null);
+        yield return __LoadAssets(assetURL, paths, null);
 
         //__isMissingConfirm = false;
 
@@ -277,6 +282,21 @@ public class GameAssetManager : MonoBehaviour
         progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
 
+    public IEnumerator Init(
+        string defaultSceneName,
+        string scenePath,
+        string path,
+        string url,
+        IAssetBundleFactory factory = null)
+    {
+        return Init(
+            defaultSceneName, 
+            path, 
+            url, 
+            factory,
+            new AssetPath[] { new AssetPath(scenePath, GameLanguage.overrideLanguage) });
+    }
+    
     public bool StopLoadingScene()
     {
         if (__sceneCoroutineIndex == -1)
@@ -326,8 +346,6 @@ public class GameAssetManager : MonoBehaviour
         AssetPath[] paths, 
         IGameAssetUnzipper[] unzippers)
     {
-        var progressbar = GameProgressbar.instance;
-
         __assetCoroutine = StartCoroutine(__LoadAssets(
             isVerified, 
             __assetCoroutine, 
