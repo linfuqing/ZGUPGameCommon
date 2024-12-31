@@ -44,12 +44,16 @@ public class GameProgressbar : MonoBehaviour
     }
 
     public UnityEvent onError;
+    public UnityEvent onEnable;
+    public UnityEvent onDisable;
 
     public ProgressbarInfo[] progressbarInfos;
 
     private Instance[] __instances;
 
     private Pool<Coroutine> __coroutines;
+
+    private int __count;
 
     public static GameProgressbar instance
     {
@@ -115,6 +119,12 @@ public class GameProgressbar : MonoBehaviour
         var progressbarInfo = progressbarInfos[(int)type];
         if (__instances[(int)type].refCount == 0)
         {
+            if (__count++ == 0)
+            {
+                if(onEnable != null)
+                    onEnable.Invoke();
+            }
+            
             if (progressbarInfo.onEnable != null)
                 progressbarInfo.onEnable.Invoke();
         }
@@ -167,6 +177,12 @@ public class GameProgressbar : MonoBehaviour
 
             if (progressbarInfo.onDisable != null)
                 progressbarInfo.onDisable.Invoke();
+
+            if (--__count == 0)
+            {
+                if(onDisable != null)
+                    onDisable.Invoke();
+            }
         }
 
         return coroutine;
