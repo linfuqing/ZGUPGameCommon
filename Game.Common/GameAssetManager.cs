@@ -249,6 +249,47 @@ public class GameAssetManager : MonoBehaviour
         }
     }
 
+    public IEnumerator InitLanguage(string languagePackageResourcePath, string url, Action<GameObject> onComplete)
+    {
+        string language = GameLanguage.overrideLanguage, 
+            persistentDataPath = Path.Combine(Application.persistentDataPath, language), 
+            //languagePackageResourcePath = GameConstantManager.Get(LanguagePackageResourcePath), 
+            languagePackageResourceFolder = Path.GetDirectoryName(languagePackageResourcePath), 
+            languagePackageResourceFilename = Path.GetFileName(languagePackageResourceFolder), 
+            languagePackageResourceFilepath = Path.Combine(languagePackageResourceFolder, languagePackageResourceFilename);
+        var assetManager = new AssetManager(Path.Combine(
+            persistentDataPath, 
+            languagePackageResourceFilepath), null);
+        
+        var assetPath = new ZG.AssetPath(GetStreamingAssetsURL(Path.Combine(language, languagePackageResourceFilepath)), string.Empty, null);
+        
+        //UnityEngine.Debug.LogError(assetPath.url);
+
+        yield return assetManager.GetOrDownload(null, null, assetPath);
+
+        //string url = GameConstantManager.Get(GameConstantManager.KEY_CDN_URL);
+        if (!string.IsNullOrEmpty(url))
+        {
+            assetPath = new ZG.AssetPath(
+                $"{url}/{language}/{languagePackageResourceFolder}/{languagePackageResourceFilename}", 
+                string.Empty, 
+                null);
+            yield return assetManager.GetOrDownload(null, null, assetPath);
+        }
+
+        string languagePackageResourceName = Path.GetFileName(languagePackageResourcePath);
+        var loader = new AssetBundleLoader<GameObject>(languagePackageResourceName.ToLower(), languagePackageResourceName, assetManager);
+
+        yield return loader;
+
+        var languagePackage = Instantiate(loader.value);
+
+        //DontDestroyOnLoad(languagePackage);
+        
+        if(onComplete != null)
+            onComplete.Invoke(languagePackage);
+    }
+
     public IEnumerator Init(
         string defaultSceneName, 
         string path, 
@@ -818,13 +859,18 @@ public class GameAssetManager : MonoBehaviour
 
         __isMissingConfirm = true;
 
-        __isConfirm = false;
+#if !UNITY_WEBGL
+        if (Application.internetReachability == NetworkReachability.ReachableViaCarrierDataNetwork)
+#endif
+        {
+            __isConfirm = false;
 
-        if (onConfirm != null)
-            onConfirm.Invoke((size / (1024.0 * 1024.0)).ToString("F2"));
+            if (onConfirm != null)
+                onConfirm.Invoke((size / (1024.0 * 1024.0)).ToString("F2"));
 
-        while (!__isConfirm)
-            yield return null;
+            while (!__isConfirm)
+                yield return null;
+        }
     }
 
     private string __GetProgressInfo(

@@ -48,11 +48,13 @@ public class GameConstantManager : UnityEngine.MonoBehaviour
         for (int i = startIndex; i < numArgs; ++i)
         {
             match = regex.Match(args[i]);
-            if (match == null || !match.Success)
+            if (!match.Success)
                 continue;
 
             if (__args == null)
                 __args = new Dictionary<string, string>();
+
+            //UnityEngine.Debug.LogError($"{match.Result("$1")} : {match.Result("$2")}");
 
             __args[match.Result("$1")] = match.Result("$2");
         }
@@ -83,7 +85,7 @@ public class GameConstantManager : UnityEngine.MonoBehaviour
                         stringBuilder = new StringBuilder(www.downloadHandler.text);
                     else
                     {
-                        stringBuilder.Append('\n');
+                        stringBuilder.Append(';');
                         stringBuilder.Append(www.downloadHandler.text);
                     }
                 }
@@ -92,7 +94,12 @@ public class GameConstantManager : UnityEngine.MonoBehaviour
             }
         }
 
-        Init(stringBuilder.ToString().Split('\n'));
+        if (stringBuilder == null)
+            yield break;
+        
+        //UnityEngine.Debug.LogError($"{stringBuilder}");
+
+        Init(stringBuilder.ToString().Split(';'));
 
         __count = __count.Value - 1;
     }
