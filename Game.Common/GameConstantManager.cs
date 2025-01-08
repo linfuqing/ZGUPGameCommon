@@ -85,7 +85,7 @@ public class GameConstantManager : UnityEngine.MonoBehaviour
                         stringBuilder = new StringBuilder(www.downloadHandler.text);
                     else
                     {
-                        stringBuilder.Append(';');
+                        stringBuilder.Append('\n');
                         stringBuilder.Append(www.downloadHandler.text);
                     }
                 }
@@ -99,7 +99,7 @@ public class GameConstantManager : UnityEngine.MonoBehaviour
         
         //UnityEngine.Debug.LogError($"{stringBuilder}");
 
-        Init(stringBuilder.ToString().Split(';'));
+        Init(stringBuilder.ToString().Split('\n'));
 
         __count = __count.Value - 1;
     }

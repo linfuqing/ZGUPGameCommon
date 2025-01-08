@@ -222,6 +222,56 @@ public class GameAssetManager : MonoBehaviour
         return __GetStreamingAssetsURL($"{Application.streamingAssetsPath}/{path}");
     }
 
+    public static IEnumerator InitLanguage(
+        string path, 
+        string url, 
+        IAssetBundleFactory factory, 
+        Action<GameObject> onComplete)
+    {
+        string language = GameLanguage.overrideLanguage, 
+            persistentDataPath = Path.Combine(Application.persistentDataPath, language), 
+            //languagePackageResourcePath = GameConstantManager.Get(LanguagePackageResourcePath), 
+            folder = Path.GetDirectoryName(path), 
+            filename = Path.GetFileName(folder), 
+            filepath = Path.Combine(folder, filename);
+        var assetManager = new AssetManager(Path.Combine(
+            persistentDataPath, 
+            filepath), 
+            factory);
+
+        string fullFilepath = Path.Combine(language, filepath);
+        var assetPath = new ZG.AssetPath(
+            GetStreamingAssetsURL(fullFilepath), 
+            string.Empty, 
+            AssetUtility.RetrievePack(fullFilepath));
+        
+        //UnityEngine.Debug.LogError(assetPath.url);
+
+        yield return assetManager.GetOrDownload(null, null, assetPath);
+
+        //string url = GameConstantManager.Get(GameConstantManager.KEY_CDN_URL);
+        if (!string.IsNullOrEmpty(url))
+        {
+            assetPath = new ZG.AssetPath(
+                $"{url}/{language}/{folder}/{filename}", 
+                string.Empty, 
+                null);
+            yield return assetManager.GetOrDownload(null, null, assetPath);
+        }
+
+        string name = Path.GetFileName(path);
+        var loader = new AssetBundleLoader<GameObject>(name.ToLower(), name, assetManager);
+
+        yield return loader;
+
+        var languagePackage = Instantiate(loader.value);
+
+        //DontDestroyOnLoad(languagePackage);
+        
+        if(onComplete != null)
+            onComplete.Invoke(languagePackage);
+    }
+
     [Preserve]
     public void ConfirmOk()
     {
@@ -249,52 +299,12 @@ public class GameAssetManager : MonoBehaviour
         }
     }
 
-    public IEnumerator InitLanguage(string languagePackageResourcePath, string url, Action<GameObject> onComplete)
-    {
-        string language = GameLanguage.overrideLanguage, 
-            persistentDataPath = Path.Combine(Application.persistentDataPath, language), 
-            //languagePackageResourcePath = GameConstantManager.Get(LanguagePackageResourcePath), 
-            languagePackageResourceFolder = Path.GetDirectoryName(languagePackageResourcePath), 
-            languagePackageResourceFilename = Path.GetFileName(languagePackageResourceFolder), 
-            languagePackageResourceFilepath = Path.Combine(languagePackageResourceFolder, languagePackageResourceFilename);
-        var assetManager = new AssetManager(Path.Combine(
-            persistentDataPath, 
-            languagePackageResourceFilepath), null);
-        
-        var assetPath = new ZG.AssetPath(GetStreamingAssetsURL(Path.Combine(language, languagePackageResourceFilepath)), string.Empty, null);
-        
-        //UnityEngine.Debug.LogError(assetPath.url);
-
-        yield return assetManager.GetOrDownload(null, null, assetPath);
-
-        //string url = GameConstantManager.Get(GameConstantManager.KEY_CDN_URL);
-        if (!string.IsNullOrEmpty(url))
-        {
-            assetPath = new ZG.AssetPath(
-                $"{url}/{language}/{languagePackageResourceFolder}/{languagePackageResourceFilename}", 
-                string.Empty, 
-                null);
-            yield return assetManager.GetOrDownload(null, null, assetPath);
-        }
-
-        string languagePackageResourceName = Path.GetFileName(languagePackageResourcePath);
-        var loader = new AssetBundleLoader<GameObject>(languagePackageResourceName.ToLower(), languagePackageResourceName, assetManager);
-
-        yield return loader;
-
-        var languagePackage = Instantiate(loader.value);
-
-        //DontDestroyOnLoad(languagePackage);
-        
-        if(onComplete != null)
-            onComplete.Invoke(languagePackage);
-    }
-
     public IEnumerator Init(
         string defaultSceneName, 
         string path, 
         string url, 
         IAssetBundleFactory factory = null, 
+        IEnumerator sceneActivation = null, 
         params AssetPath[] paths)
     {
         var progressBar = GameProgressbar.instance;
@@ -318,7 +328,7 @@ public class GameAssetManager : MonoBehaviour
         
         nextSceneName = defaultSceneName;
 
-        yield return __LoadScene(-1);
+        yield return __LoadScene(-1, null);
 
         progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
@@ -328,13 +338,15 @@ public class GameAssetManager : MonoBehaviour
         string scenePath,
         string path,
         string url,
-        IAssetBundleFactory factory = null)
+        IAssetBundleFactory factory = null, 
+        IEnumerator sceneActivation = null)
     {
         return Init(
             defaultSceneName, 
             path, 
             url, 
             factory,
+            sceneActivation, 
             new AssetPath[] { new AssetPath(scenePath, GameLanguage.overrideLanguage) });
     }
     
@@ -352,7 +364,7 @@ public class GameAssetManager : MonoBehaviour
         return true;
     }
 
-    public bool LoadScene(string name, Action onComplete)
+    public bool LoadScene(string name, Action onComplete, IEnumerator activation = null)
     {
         if (string.IsNullOrEmpty(nextSceneName) && sceneName == name)
             return false;
@@ -372,7 +384,7 @@ public class GameAssetManager : MonoBehaviour
 
             __sceneCoroutineIndex = progressbar.BeginCoroutine();
 
-            var coroutine = StartCoroutine(__LoadScene(__sceneCoroutineIndex));
+            var coroutine = StartCoroutine(__LoadScene(__sceneCoroutineIndex, activation));
 
             progressbar.EndCoroutine(__sceneCoroutineIndex, coroutine);
         }
@@ -584,7 +596,7 @@ public class GameAssetManager : MonoBehaviour
         __assetCoroutine = null;
     }
 
-    private IEnumerator __LoadScene(int coroutineIndex)
+    private IEnumerator __LoadScene(int coroutineIndex, IEnumerator activation)
     {
         var progressbar = GameProgressbar.instance;
 
@@ -637,9 +649,14 @@ public class GameAssetManager : MonoBehaviour
             var loader = SceneManager.LoadSceneAsync(Path.GetFileNameWithoutExtension(nextSceneName), LoadSceneMode.Single);
             if (loader != null)
             {
+                loader.allowSceneActivation = activation == null;
+                
                 while (!loader.isDone)
                 {
                     progressbar.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, loader.progress + 0.1f);
+
+                    if (activation != null && !activation.MoveNext())
+                        loader.allowSceneActivation = true;
 
                     yield return null;
                 }
