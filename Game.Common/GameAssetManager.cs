@@ -649,7 +649,8 @@ public class GameAssetManager : MonoBehaviour
                 
                 while (!loader.isDone)
                 {
-                    progressbar.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, loader.progress + 0.1f);
+                    if(progressbar != null)
+                        progressbar.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, loader.progress + 0.1f);
 
                     if (activation != null && !activation.MoveNext())
                         loader.allowSceneActivation = true;
