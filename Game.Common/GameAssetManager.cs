@@ -382,11 +382,12 @@ public class GameAssetManager : MonoBehaviour
         {
             var progressbar = GameProgressbar.instance;
 
-            __sceneCoroutineIndex = progressbar.BeginCoroutine();
+            __sceneCoroutineIndex = progressbar == null ? -1 : progressbar.BeginCoroutine();
 
             var coroutine = StartCoroutine(__LoadScene(__sceneCoroutineIndex, activation));
 
-            progressbar.EndCoroutine(__sceneCoroutineIndex, coroutine);
+            if(progressbar != null)
+                progressbar.EndCoroutine(__sceneCoroutineIndex, coroutine);
         }
 
         return true;
@@ -600,13 +601,8 @@ public class GameAssetManager : MonoBehaviour
     {
         var progressbar = GameProgressbar.instance;
 
-        /*if (progressbarInfo.progressbar != null)
-            progressbarInfo.progressbar.Reset(0.0f);
-
-        if (progressbarInfo.loadScene != null)
-            progressbarInfo.loadScene.SetActive(true);*/
-
-        progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.LoadScene, coroutineIndex);
+        if(progressbar != null)
+            progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.LoadScene, coroutineIndex);
 
         //等待断开连接的对象调用OnDestroy
         yield return null;
@@ -675,7 +671,8 @@ public class GameAssetManager : MonoBehaviour
                 this.nextSceneName = null;
         }
 
-        progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.LoadScene, coroutineIndex);
+        if(progressbar != null)
+            progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.LoadScene, coroutineIndex);
 
         if (coroutineIndex == __sceneCoroutineIndex)
             __sceneCoroutineIndex = -1;
