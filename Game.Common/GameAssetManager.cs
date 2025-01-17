@@ -328,7 +328,7 @@ public class GameAssetManager : MonoBehaviour
         
         nextSceneName = defaultSceneName;
 
-        yield return __LoadScene(-1, null);
+        yield return __LoadScene(-1, sceneActivation);
 
         progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
