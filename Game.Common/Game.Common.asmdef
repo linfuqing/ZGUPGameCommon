@@ -2,7 +2,9 @@
     "name": "Game.Common",
     "rootNamespace": "",
     "references": [
-        "GUID:beff58cf91ef5dc4f8939ec84aca2109"
+        "GUID:beff58cf91ef5dc4f8939ec84aca2109",
+        "GUID:38d5088b410fc4249bce1feefb7adf85",
+        "GUID:a10692c229acc524a82077027d0b634d"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
