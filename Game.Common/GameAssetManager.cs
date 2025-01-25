@@ -214,6 +214,17 @@ public class GameAssetManager : MonoBehaviour
         }
     }
 
+    public static string GetURL(string path)
+    {
+        switch (Application.platform)
+        {
+            case RuntimePlatform.Android:
+                return "jar:file://" + path;
+            default:
+                return __GetStreamingAssetsURL(path);
+        }
+    }
+
     public static string GetStreamingAssetsURL(string path)
     {
         if (string.IsNullOrEmpty(path))
@@ -413,7 +424,7 @@ public class GameAssetManager : MonoBehaviour
     {
         var progressbar = GameProgressbar.instance;
 
-        (IAssetPack, ulong)[] assetPacks = null;
+        /*(IAssetPack, ulong)[] assetPacks = null;
         IAssetPack assetPack;
         IAssetPackHeader assetPackHeader;
         ulong fileSize, size = 0;
@@ -486,7 +497,7 @@ public class GameAssetManager : MonoBehaviour
             } while (!isDone);
 
             progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Download);
-        }
+        }*/
 
         progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Unzip);
 
@@ -498,8 +509,9 @@ public class GameAssetManager : MonoBehaviour
 
         string folder;
         AssetPath path;
+        int length = paths.Length;
         var assetPaths = new ZG.AssetPath[length];
-        for (i = 0; i < length; ++i)
+        for (int i = 0; i < length; ++i)
         {
             path = paths[i];
             folder = Path.GetDirectoryName(path.value);
@@ -507,7 +519,10 @@ public class GameAssetManager : MonoBehaviour
             if (!string.IsNullOrEmpty(folder))
                 __assetManager.LoadFrom(path.value);
 
-            assetPaths[i] = new ZG.AssetPath(GetStreamingAssetsURL(path.filePath), folder, assetPacks == null ? null : assetPacks[i].Item1);
+            assetPaths[i] = new ZG.AssetPath(
+                GetStreamingAssetsURL(path.filePath), 
+                folder, 
+                AssetUtility.RetrievePack(path.filePath)/*assetPacks == null ? null : assetPacks[i].Item1*/);
         }
 
         __tachometer.Start();
@@ -529,7 +544,7 @@ public class GameAssetManager : MonoBehaviour
             /*if (!string.IsNullOrEmpty(suffix))
                 url = $"{url}/{suffix}";*/
 
-            for (i = 0; i < length; ++i)
+            for (int i = 0; i < length; ++i)
             {
                 path = paths[i];
 
