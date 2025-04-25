@@ -10,7 +10,9 @@ using ZG;
 
 public interface IGameAssetUnzipper
 {
-    IEnumerator Execute(AssetManager.DownloadHandler downloadHandler);
+    string filename { get; }
+    
+    IEnumerator Execute(AssetBundle assetBundle, AssetManager.DownloadHandler downloadHandler);
 }
 
 public class GameAssetManager : MonoBehaviour
@@ -316,6 +318,7 @@ public class GameAssetManager : MonoBehaviour
         string url, 
         IAssetBundleFactory factory = null, 
         IEnumerator sceneActivation = null, 
+        IGameAssetUnzipper[] unzippers = null, 
         params AssetPath[] paths)
     {
         var progressBar = GameProgressbar.instance;
@@ -329,7 +332,7 @@ public class GameAssetManager : MonoBehaviour
         string assetURL = url == null ? null : $"{url}/{Application.platform}/{language}";
         //yield return __LoadAssets(resourcesURL, path, scenePath);
 
-        yield return __LoadAssets(assetURL, paths, null);
+        yield return __LoadAssets(assetURL, paths, unzippers);
 
         //__isMissingConfirm = false;
 
@@ -350,7 +353,8 @@ public class GameAssetManager : MonoBehaviour
         string path,
         string url,
         IAssetBundleFactory factory = null, 
-        IEnumerator sceneActivation = null)
+        IEnumerator sceneActivation = null, 
+        params IGameAssetUnzipper[] unzippers)
     {
         return Init(
             defaultSceneName, 
@@ -358,7 +362,8 @@ public class GameAssetManager : MonoBehaviour
             url, 
             factory,
             sceneActivation, 
-            new AssetPath[] { new AssetPath(scenePath, GameLanguage.overrideLanguage) });
+            unzippers, 
+            new AssetPath(scenePath, GameLanguage.overrideLanguage));
     }
     
     public bool StopLoadingScene()
@@ -501,12 +506,6 @@ public class GameAssetManager : MonoBehaviour
 
         progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Unzip);
 
-        if(unzippers != null)
-        {
-            foreach(var unzipper in unzippers)
-                yield return unzipper.Execute(__Unzip);
-        }
-
         string folder;
         AssetPath path;
         int length = paths.Length;
@@ -562,6 +561,39 @@ public class GameAssetManager : MonoBehaviour
 
             /*if (progressbarInfo.onInfo != null)
                 progressbarInfo.onInfo.Invoke(string.Empty);*/
+        }
+        
+        if(unzippers != null)
+        {
+            string filename;
+            AssetManager.Asset asset;
+            AssetBundle assetBundle;
+            foreach (var unzipper in unzippers)
+            {
+                filename = unzipper.filename;
+                if (string.IsNullOrEmpty(filename) ||
+                    !__assetManager.Get(
+                        filename,
+                        out asset) ||
+                    asset.data.type == AssetManager.AssetType.UncompressedRuntime)
+                {
+                    yield return unzipper.Execute(null, __Unzip);
+                    
+                    continue;
+                }
+
+                progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Unzip);
+
+                assetBundle = null;
+                yield return __assetManager.LoadAssetBundleAsync(filename, null, x => assetBundle = x);
+
+                yield return __assetManager.Write(filename, unzipper.Execute(assetBundle, __Unzip));
+
+                if(assetBundle != null)
+                    assetBundle.Unload(true);
+                
+                progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Unzip);
+            }
         }
     }
 
@@ -665,7 +697,7 @@ public class GameAssetManager : MonoBehaviour
                 while (!loader.isDone)
                 {
                     if(progressbar != null)
-                        progressbar.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, loader.progress + 0.1f);
+                        progressbar.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, loader.progress * 0.1f + 0.9f);
 
                     if (activation != null && !activation.MoveNext())
                         loader.allowSceneActivation = true;
@@ -807,7 +839,7 @@ public class GameAssetManager : MonoBehaviour
 
     private void __LoadingScene(float progress)
     {
-        GameProgressbar.instance.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, progress * 0.1f);
+        GameProgressbar.instance.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, progress * 0.9f);
 
         /*if (progressbarInfo.progressbar != null)
             progressbarInfo.progressbar.value = progress * 0.1f;*/
