@@ -27,7 +27,11 @@ public class GameBuildProcessor : EditorWindow
             if (report == null || buildConfig == null)
                 return;
 
-            var channel = buildConfig.channels[buildChannel];
+            var buildChannel = GameBuildProcessor.buildChannel;
+            if (buildChannel < 1)
+                return;
+
+            var channel = buildConfig.channels[buildChannel - 1];
 
             if (!string.IsNullOrEmpty(channel.productName))
                 PlayerSettings.productName = channel.productName;
@@ -104,9 +108,10 @@ public class GameBuildProcessor : EditorWindow
         int numChannels = buildConfig == null || buildConfig.channels == null ? 0 : buildConfig.channels.Length;
         if (numChannels > 0)
         {
-            string[] channelNames = new string[numChannels];
+            string[] channelNames = new string[numChannels + 1];
+            channelNames[0] = "None";
             for (int i = 0; i < numChannels; ++i)
-                channelNames[i] = buildConfig.channels[i].name;
+                channelNames[i + 1] = buildConfig.channels[i].name;
             
             buildChannel = EditorGUILayout.Popup(buildChannel, channelNames);
         }

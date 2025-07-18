@@ -266,7 +266,7 @@ public class GameAssetManager : MonoBehaviour
         if (!string.IsNullOrEmpty(url))
         {
             assetPath = new ZG.AssetPath(
-                $"{url}/{language}/{folder}/{filename}", 
+                $"{url}/{Application.platform}/{language}/{folder}/{filename}", 
                 string.Empty, 
                 null);
             yield return assetManager.GetOrDownload(null, null, assetPath);
@@ -330,13 +330,8 @@ public class GameAssetManager : MonoBehaviour
         __assetManager = new AssetManager(Path.Combine(persistentDataPath, path), factory);
 
         string assetURL = url == null ? null : $"{url}/{Application.platform}/{language}";
-        //yield return __LoadAssets(resourcesURL, path, scenePath);
 
         yield return __LoadAssets(assetURL, paths, unzippers);
-
-        //__isMissingConfirm = false;
-
-        //world = WorldUtility.GetOrCreateWorld("Client");
 
         __onSceneLoadedComplete = null;
         
@@ -582,7 +577,7 @@ public class GameAssetManager : MonoBehaviour
                     continue;
                 }
 
-                progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Unzip);
+                progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Verify);
 
                 assetBundle = null;
                 yield return __assetManager.LoadAssetBundleAsync(filename, null, x => assetBundle = x);
@@ -592,7 +587,7 @@ public class GameAssetManager : MonoBehaviour
                 if(assetBundle != null)
                     assetBundle.Unload(true);
                 
-                progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Unzip);
+                progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Verify);
             }
         }
     }
@@ -679,6 +674,10 @@ public class GameAssetManager : MonoBehaviour
 
                 if (__assetManager != null)
                     __assetManager.UnloadAssetBundle(sceneName);
+                
+                yield return Resources.UnloadUnusedAssets();
+            
+                GC.Collect();
             }
 
             string nextSceneName = this.nextSceneName;
@@ -710,10 +709,6 @@ public class GameAssetManager : MonoBehaviour
                 assetBundle.Unload(false);*/
 
             //Caching.ClearCache();
-
-            yield return Resources.UnloadUnusedAssets();
-            
-            GC.Collect();
 
             if (nextSceneName == this.nextSceneName)
                 this.nextSceneName = null;
