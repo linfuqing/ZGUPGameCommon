@@ -21,7 +21,7 @@ public class GameAssetObject : ZG.AssetObjectBase
 
     public override string assetName => string.IsNullOrEmpty(_nameOverride) ? name : _nameOverride;
 
-    public override ZG.AssetManager assetManager => GameAssetManager.instance.dataManager;
+    public override ZG.AssetManager assetManager => GameAssetManager.instance?.dataManager;
 
     protected new void OnEnable()
     {
