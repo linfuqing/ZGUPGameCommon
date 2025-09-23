@@ -8,14 +8,18 @@ public class GameAssetObject : ZG.AssetObjectBase
     internal Space _space;
     [SerializeField]
     internal float _time;
-    [SerializeField, UnityEngine.Serialization.FormerlySerializedAs("label")]
+    [SerializeField]
     internal string _fileName;
+    [SerializeField]
+    internal string _nameOverride;
 
     public override Space space => _space;
 
     public override float time => _time;
 
     public override string fileName => _fileName;
+
+    public override string assetName => string.IsNullOrEmpty(_nameOverride) ? name : _nameOverride;
 
     public override ZG.AssetManager assetManager => GameAssetManager.instance.dataManager;
 
