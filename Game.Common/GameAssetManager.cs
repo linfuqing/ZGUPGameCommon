@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -13,6 +14,13 @@ public interface IGameAssetUnzipper
     string filename { get; }
     
     IEnumerator Execute(AssetBundle assetBundle, AssetManager.DownloadHandler downloadHandler);
+}
+
+public interface IGameSceneLoader
+{
+    bool isDone { get; }
+    
+    float progress { get; }
 }
 
 public class GameAssetManager : MonoBehaviour
@@ -175,6 +183,8 @@ public class GameAssetManager : MonoBehaviour
 
     private AssetManager __assetManager;
 
+    private ConcurrentBag<IGameSceneLoader> __sceneLoaders = new ConcurrentBag<IGameSceneLoader>();
+
     public static GameAssetManager instance
     {
         get;
@@ -283,6 +293,14 @@ public class GameAssetManager : MonoBehaviour
         
         if(onComplete != null)
             onComplete.Invoke(languagePackage);
+    }
+
+    public void SetSceneLoader(IGameSceneLoader loader)
+    {
+        if (!isSceneLoading)
+            return;
+        
+        __sceneLoaders.Add(loader);
     }
 
     [Preserve]
@@ -639,7 +657,7 @@ public class GameAssetManager : MonoBehaviour
         __assetCoroutine = null;
     }
 
-    private IEnumerator __LoadScene(int coroutineIndex, IEnumerator activation)
+    private IEnumerator __LoadScene(bool isWaitingForSceneLoaders, int coroutineIndex, IEnumerator activation)
     {
         var progressbar = GameProgressbar.instance;
 
@@ -686,20 +704,45 @@ public class GameAssetManager : MonoBehaviour
 
             AssetBundle assetBundle = null;
             if (__assetManager != null)
-                yield return __assetManager.LoadAssetBundleAsync(nextSceneName, __LoadingScene, x => assetBundle = x);
+                yield return __assetManager.LoadAssetBundleAsync(
+                    nextSceneName, 
+                    isWaitingForSceneLoaders ? __LoadingSceneAndWaitingForLoaders : __LoadingScene, 
+                    x => assetBundle = x);
 
-            var loader = SceneManager.LoadSceneAsync(Path.GetFileNameWithoutExtension(nextSceneName), LoadSceneMode.Single);
-            if (loader != null)
+            var asyncOperation = SceneManager.LoadSceneAsync(Path.GetFileNameWithoutExtension(nextSceneName), LoadSceneMode.Single);
+            if (asyncOperation != null)
             {
-                loader.allowSceneActivation = activation == null;
+                asyncOperation.allowSceneActivation = activation == null;
                 
-                while (!loader.isDone)
+                while (!asyncOperation.isDone)
                 {
                     if(progressbar != null)
-                        progressbar.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, loader.progress * 0.1f + 0.9f);
+                        progressbar.UpdateProgressBar(
+                            GameProgressbar.ProgressbarType.LoadScene, 
+                            asyncOperation.progress * 0.1f + (isWaitingForSceneLoaders ? 0.1f : 0.9f));
 
                     if (activation != null && !activation.MoveNext())
-                        loader.allowSceneActivation = true;
+                        asyncOperation.allowSceneActivation = true;
+
+                    yield return null;
+                }
+            }
+
+            float progress;
+            while (__sceneLoaders.TryTake(out var sceneLoader))
+            {
+                while (!sceneLoader.isDone)
+                {
+                    if (isWaitingForSceneLoaders && progressbar != null)
+                    {
+                        progress = sceneLoader.progress;
+                        foreach (var temp in __sceneLoaders)
+                            progress += temp.progress;
+
+                        progressbar.UpdateProgressBar(
+                            GameProgressbar.ProgressbarType.LoadScene,
+                            progress * 0.8f / (__sceneLoaders.Count + 1) + 0.2f);
+                    }
 
                     yield return null;
                 }
@@ -726,120 +769,18 @@ public class GameAssetManager : MonoBehaviour
 
             __onSceneLoadedComplete = null;
         }
-        
-        /*if (progressbarInfo.loadScene != null)
-            progressbarInfo.loadScene.SetActive(false);*/
     }
-
-    /*private IEnumerator __Load(string url, string folder)
-    {
-        if (progressbarInfo.unzip != null)
-            progressbarInfo.unzip.SetActive(true);
-
-        string streamingAssetsPath = Application.streamingAssetsPath;
-
-        if (__assetManager == null)
-        {
-            string persistentDataPath = Application.persistentDataPath;
-            __assetManager = new AssetManager(string.IsNullOrEmpty(path) ? persistentDataPath : Path.Combine(persistentDataPath, path));
-
-            if (string.IsNullOrEmpty(folder) ? __assetManager.assetCount < 1 : !__assetManager.Contains(folder))
-                yield return __assetManager.LoadAll(
-                    string.IsNullOrEmpty(path) ? __GetPath(streamingAssetsPath) : __GetPath(Path.Combine(streamingAssetsPath, path)),
-                    folder,
-                    __Download,
-                    0.0f);
-        }
-        else if (!string.IsNullOrEmpty(folder))
-        {
-            streamingAssetsPath = Path.Combine(streamingAssetsPath, folder);
-
-            string name = Path.GetFileName(folder);
-
-            __assetManager.LoadFrom(Path.Combine(folder, name));
-            if (!__assetManager.Contains(folder))
-                yield return __assetManager.LoadAll(
-                    __GetPath(Path.Combine(streamingAssetsPath, name)),
-                    folder,
-                    __Download,
-                    0.0f);
-        }
-
-        if (progressbarInfo.text != null)
-            progressbarInfo.text.text = string.Empty;
-
-        if (progressbarInfo.unzip != null)
-            progressbarInfo.unzip.SetActive(false);
-
-        if (!string.IsNullOrEmpty(url))
-        {
-            if (progressbarInfo.download != null)
-                progressbarInfo.download.SetActive(true);
-
-            yield return __assetManager.LoadAll(
-                url + '/' + path,
-                folder,
-                __Download,
-                timeout);
-
-            if (progressbarInfo.text != null)
-                progressbarInfo.text.text = string.Empty;
-
-            if (progressbarInfo.download != null)
-                progressbarInfo.download.SetActive(false);
-        }
-
-        if (!string.IsNullOrEmpty(scenePath))
-        {
-            if (progressbarInfo.unzipScene != null)
-                progressbarInfo.unzipScene.SetActive(true);
-
-            string path = string.IsNullOrEmpty(folder) ? scenePath : Path.Combine(folder, scenePath);
-
-            folder = Path.GetDirectoryName(path);
-
-            __assetManager.LoadFrom(path);
-            if (!__assetManager.Contains(folder))
-                yield return __assetManager.LoadAll(
-                    __GetPath(Path.Combine(streamingAssetsPath, scenePath)),
-                    folder,
-                    __Download,
-                    0.0f);
-
-            if (progressbarInfo.text != null)
-                progressbarInfo.text.text = string.Empty;
-
-            if (progressbarInfo.unzipScene != null)
-                progressbarInfo.unzipScene.SetActive(false);
-
-            if (!string.IsNullOrEmpty(url))
-            {
-                if (progressbarInfo.downloadScene != null)
-                    progressbarInfo.downloadScene.SetActive(true);
-
-                yield return __assetManager.LoadAll(
-                    url + '/' + scenePath,
-                    folder,
-                    __Download,
-                    timeout);
-
-                if (progressbarInfo.text != null)
-                    progressbarInfo.text.text = string.Empty;
-
-                if (progressbarInfo.downloadScene != null)
-                    progressbarInfo.downloadScene.SetActive(false);
-            }
-        }
-    }*/
 
     private void __LoadingScene(float progress)
     {
         GameProgressbar.instance.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, progress * 0.9f);
-
-        /*if (progressbarInfo.progressbar != null)
-            progressbarInfo.progressbar.value = progress * 0.1f;*/
     }
 
+    private void __LoadingSceneAndWaitingForLoaders(float progress)
+    {
+        GameProgressbar.instance.UpdateProgressBar(GameProgressbar.ProgressbarType.LoadScene, progress * 0.1f);
+    }
+    
     private void __Recompress(
         string name,
         float progress,

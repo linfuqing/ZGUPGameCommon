@@ -1,9 +1,12 @@
 ﻿using UnityEngine;
 
-public class GameAssetObject : ZG.AssetObjectBase
+public class GameAssetObject : ZG.AssetObjectBase, IGameSceneLoader
 {
-    private Coroutine __coroutine;
+    [System.Serializable]
+    internal class LoadedEvent : UnityEngine.Events.UnityEvent<GameObject> { }
     
+    private Coroutine __coroutine;
+
     [SerializeField]
     internal Space _space;
     [SerializeField]
@@ -12,6 +15,16 @@ public class GameAssetObject : ZG.AssetObjectBase
     internal string _fileName;
     [SerializeField]
     internal string _nameOverride;
+
+    [SerializeField, UnityEngine.Serialization.FormerlySerializedAs("onLoaded")]
+    internal LoadedEvent _onLoaded;
+
+    public bool isDone
+    {
+        get;
+
+        private set;
+    }
 
     public override Space space => _space;
 
@@ -23,6 +36,15 @@ public class GameAssetObject : ZG.AssetObjectBase
 
     public override ZG.AssetManager assetManager => GameAssetManager.instance?.dataManager;
 
+    public GameAssetObject()
+    {
+        var assetManager = GameAssetManager.instance;
+        if (assetManager != null)
+            assetManager.SetSceneLoader(this);
+
+        onLoadComplete += __OnLoadComplete;
+    }
+
     protected new void OnEnable()
     {
         if (__coroutine != null)
@@ -31,9 +53,7 @@ public class GameAssetObject : ZG.AssetObjectBase
             if(assetManager != null)
                 assetManager.StopCoroutine(__coroutine);
 
-            __coroutine = null;
-            
-            base.OnDisable();
+            __DisableRightNow();
         }
         
         base.OnEnable();
@@ -41,8 +61,12 @@ public class GameAssetObject : ZG.AssetObjectBase
 
     protected new void OnDisable()
     {
+        UnityEngine.Assertions.Assert.IsNull(__coroutine);
+        
         var assetManager = GameAssetManager.instance;
-        if(assetManager != null)
+        if (assetManager == null)
+            __DisableRightNow();
+        else
             __coroutine = assetManager.StartCoroutine(__Disable());
     }
 
@@ -50,8 +74,25 @@ public class GameAssetObject : ZG.AssetObjectBase
     {
         yield return null;
 
+        __DisableRightNow();
+    }
+
+    private void __DisableRightNow()
+    {
         base.OnDisable();
 
+        isDone = false;
+
         __coroutine = null;
+    }
+    
+    private void __OnLoadComplete(GameObject gameObject)
+    {
+        UnityEngine.Assertions.Assert.IsFalse(isDone);
+        
+        isDone = true;
+        
+        if(_onLoaded != null)
+            _onLoaded.Invoke(gameObject);
     }
 }
