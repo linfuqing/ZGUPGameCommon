@@ -1,6 +1,6 @@
 using System;
 using System.Collections;
-using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -183,7 +183,7 @@ public class GameAssetManager : MonoBehaviour
 
     private AssetManager __assetManager;
 
-    private ConcurrentBag<IGameSceneLoader> __sceneLoaders = new ConcurrentBag<IGameSceneLoader>();
+    private Queue<IGameSceneLoader> __sceneLoaders = new Queue<IGameSceneLoader>();
 
     public static GameAssetManager instance
     {
@@ -300,7 +300,7 @@ public class GameAssetManager : MonoBehaviour
         if (!isSceneLoading)
             return;
         
-        __sceneLoaders.Add(loader);
+        __sceneLoaders.Enqueue(loader);
     }
 
     [Preserve]
@@ -331,6 +331,7 @@ public class GameAssetManager : MonoBehaviour
     }
 
     public IEnumerator Init(
+        bool isWaitingForSceneLoaders, 
         string defaultSceneName, 
         string path, 
         string url, 
@@ -355,7 +356,7 @@ public class GameAssetManager : MonoBehaviour
         
         nextSceneName = defaultSceneName;
 
-        yield return __LoadScene(false, -1, sceneActivation);
+        yield return __LoadScene(isWaitingForSceneLoaders, -1, sceneActivation);
 
         progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
@@ -370,6 +371,7 @@ public class GameAssetManager : MonoBehaviour
         params IGameAssetUnzipper[] unzippers)
     {
         return Init(
+            false, 
             defaultSceneName, 
             path, 
             url, 
@@ -728,26 +730,31 @@ public class GameAssetManager : MonoBehaviour
                 }
             }
 
+            int doneCount = 0, loadingCount;
             float progress;
-            while (__sceneLoaders.TryTake(out var sceneLoader))
+            while (__sceneLoaders.TryDequeue(out var sceneLoader))
             {
-                while (!sceneLoader.isDone)
+                do
                 {
+                    yield return null;
+
                     if (isWaitingForSceneLoaders && progressbar != null)
                     {
                         progress = sceneLoader.progress;
                         foreach (var temp in __sceneLoaders)
                             progress += temp.progress;
 
+                        loadingCount = __sceneLoaders.Count + 1;
                         progressbar.UpdateProgressBar(
                             GameProgressbar.ProgressbarType.LoadScene,
-                            progress * 0.8f / (__sceneLoaders.Count + 1) + 0.2f);
+                            (doneCount + progress) * 0.8f / (doneCount + loadingCount) + 0.2f);
                     }
 
-                    yield return null;
-                }
-            }
+                } while (!sceneLoader.isDone);
 
+                ++doneCount;
+            }
+            
             /*if (assetBundle != null)
                 assetBundle.Unload(false);*/
 

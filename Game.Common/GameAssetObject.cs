@@ -90,6 +90,8 @@ public class GameAssetObject : ZG.AssetObjectBase, IGameSceneLoader
     {
         UnityEngine.Assertions.Assert.IsFalse(isDone);
         
+        print($"Asset {gameObject.name} load complete.");
+        
         isDone = true;
         
         if(_onLoaded != null)
