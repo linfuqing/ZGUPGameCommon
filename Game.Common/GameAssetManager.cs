@@ -355,7 +355,7 @@ public class GameAssetManager : MonoBehaviour
         
         nextSceneName = defaultSceneName;
 
-        yield return __LoadScene(-1, sceneActivation);
+        yield return __LoadScene(false, -1, sceneActivation);
 
         progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
@@ -393,7 +393,7 @@ public class GameAssetManager : MonoBehaviour
         return true;
     }
 
-    public bool LoadScene(string name, Action onComplete, IEnumerator activation = null)
+    public bool LoadScene(string name, Action onComplete, IEnumerator activation = null, bool isWaitingForSceneLoaders = true)
     {
         if (string.IsNullOrEmpty(nextSceneName) && sceneName == name)
             return false;
@@ -413,7 +413,7 @@ public class GameAssetManager : MonoBehaviour
 
             __sceneCoroutineIndex = progressbar == null ? -1 : progressbar.BeginCoroutine();
 
-            var coroutine = StartCoroutine(__LoadScene(__sceneCoroutineIndex, activation));
+            var coroutine = StartCoroutine(__LoadScene(isWaitingForSceneLoaders, __sceneCoroutineIndex, activation));
 
             if(progressbar != null)
                 progressbar.EndCoroutine(__sceneCoroutineIndex, coroutine);
