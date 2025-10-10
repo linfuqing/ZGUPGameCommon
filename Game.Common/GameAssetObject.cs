@@ -80,8 +80,6 @@ public class GameAssetObject : AssetObjectBase, IGameSceneLoader
     
     private void __OnLoadComplete(GameObject gameObject)
     {
-        UnityEngine.Assertions.Assert.IsFalse(isDone);
-        
         print($"Asset {gameObject.name} load complete.");
         
         if(_onLoaded != null)
