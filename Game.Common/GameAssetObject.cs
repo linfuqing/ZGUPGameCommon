@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
+using ZG;
 
-public class GameAssetObject : ZG.AssetObjectBase, IGameSceneLoader
+public class GameAssetObject : AssetObjectBase, IGameSceneLoader
 {
     [System.Serializable]
     internal class LoadedEvent : UnityEngine.Events.UnityEvent<GameObject> { }
@@ -8,7 +9,7 @@ public class GameAssetObject : ZG.AssetObjectBase, IGameSceneLoader
     private Coroutine __coroutine;
 
     [SerializeField]
-    internal Space _space;
+    internal AssetObjectLoader.Space _space;
     [SerializeField]
     internal float _time;
     [SerializeField]
@@ -19,14 +20,7 @@ public class GameAssetObject : ZG.AssetObjectBase, IGameSceneLoader
     [SerializeField, UnityEngine.Serialization.FormerlySerializedAs("onLoaded")]
     internal LoadedEvent _onLoaded;
 
-    public bool isDone
-    {
-        get;
-
-        private set;
-    }
-
-    public override Space space => _space;
+    public override AssetObjectLoader.Space space => _space;
 
     public override float time => _time;
 
@@ -39,7 +33,7 @@ public class GameAssetObject : ZG.AssetObjectBase, IGameSceneLoader
     public GameAssetObject()
     {
         var assetManager = GameAssetManager.instance;
-        if (assetManager != null)
+        if ((object)assetManager != null)
             assetManager.SetSceneLoader(this);
 
         onLoadComplete += __OnLoadComplete;
@@ -81,8 +75,6 @@ public class GameAssetObject : ZG.AssetObjectBase, IGameSceneLoader
     {
         base.OnDisable();
 
-        isDone = false;
-
         __coroutine = null;
     }
     
@@ -91,8 +83,6 @@ public class GameAssetObject : ZG.AssetObjectBase, IGameSceneLoader
         UnityEngine.Assertions.Assert.IsFalse(isDone);
         
         print($"Asset {gameObject.name} load complete.");
-        
-        isDone = true;
         
         if(_onLoaded != null)
             _onLoaded.Invoke(gameObject);

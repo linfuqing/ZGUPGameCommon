@@ -1,10 +1,9 @@
 using System;
 using System.Collections;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Threading.Tasks;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
 using UnityEngine.SceneManagement;
 using UnityEngine.Scripting;
 using ZG;
@@ -183,7 +182,7 @@ public class GameAssetManager : MonoBehaviour
 
     private AssetManager __assetManager;
 
-    private Queue<IGameSceneLoader> __sceneLoaders = new Queue<IGameSceneLoader>();
+    private ConcurrentBag<IGameSceneLoader> __sceneLoaders = new ConcurrentBag<IGameSceneLoader>();
 
     public static GameAssetManager instance
     {
@@ -192,7 +191,7 @@ public class GameAssetManager : MonoBehaviour
         private set;
     }
 
-    public bool isSceneLoading => __sceneCoroutineIndex != -1;
+    public bool isSceneLoading => __sceneCoroutineIndex != -1 || nextSceneName != null;
 
     public float speed => __tachometer.value;
 
@@ -300,7 +299,7 @@ public class GameAssetManager : MonoBehaviour
         if (!isSceneLoading)
             return;
         
-        __sceneLoaders.Enqueue(loader);
+        __sceneLoaders.Add(loader);
     }
 
     [Preserve]
@@ -729,10 +728,13 @@ public class GameAssetManager : MonoBehaviour
                     yield return null;
                 }
             }
-
+            
+            if(isWaitingForSceneLoaders)
+                yield return null;
+            
             int doneCount = 0, loadingCount;
             float progress;
-            while (__sceneLoaders.TryDequeue(out var sceneLoader))
+            while (__sceneLoaders.TryTake(out var sceneLoader))
             {
                 do
                 {
