@@ -300,6 +300,8 @@ public class GameAssetManager : MonoBehaviour
             return;
         
         __sceneLoaders.Add(loader);
+        
+        //Debug.LogError("SetSceneLoader");
     }
 
     [Preserve]
@@ -727,10 +729,21 @@ public class GameAssetManager : MonoBehaviour
 
                     yield return null;
                 }
+
+                /*if (isWaitingForSceneLoaders)
+                {
+                    sceneName = Path.GetFileNameWithoutExtension(nextSceneName);
+                    Scene scene;
+                    do
+                    {
+                        yield return null;
+
+                        scene = SceneManager.GetActiveScene();
+                    } while (!scene.IsValid() || scene.name != sceneName || !scene.isLoaded);
+                }*/
             }
             
-            if(isWaitingForSceneLoaders)
-                yield return null;
+            //Debug.LogError("Start Scene Load");
             
             int doneCount = 0, loadingCount;
             float progress;

@@ -18,7 +18,7 @@ public struct GameChannelToken : IGameChannelToken
 {
     public void Get(Action<string> onComplete)
     {
-        onComplete.Invoke(string.Empty);
+        onComplete(string.Empty);
     }
 }
 

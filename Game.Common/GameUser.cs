@@ -317,7 +317,6 @@ public abstract class GameUser : MonoBehaviour
 
         Shared._unbind = (Action<bool?> onComplete) =>
         {
-
             if (userData == null)
                 onComplete(false);
             else
