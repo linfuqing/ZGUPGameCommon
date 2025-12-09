@@ -50,7 +50,7 @@ public abstract class GameUser : MonoBehaviour
 
         internal static Action _onActivated;
 
-        internal static Action<bool> _onloginStatusChanged;
+        internal static Action<bool> _onLoginStatusChanged;
 
         public static int userType
         {
@@ -100,16 +100,16 @@ public abstract class GameUser : MonoBehaviour
             }
         }
 
-        public static event Action<bool> onloginStatusChanged
+        public static event Action<bool> onLoginStatusChanged
         {
             add
             {
-                _onloginStatusChanged += value;
+                _onLoginStatusChanged += value;
             }
 
             remove
             {
-                _onloginStatusChanged -= value;
+                _onLoginStatusChanged -= value;
             }
         }
 
@@ -198,7 +198,7 @@ public abstract class GameUser : MonoBehaviour
             if (onSingleton != null)
                 onSingleton.Invoke();
 
-            channel.RequestUserInfo(__OnLogin, Login);
+            channel.RequestUserInfo(__OnLogin, __OnLogout);
         }
         else if (channels == null || channels.Length < 1)
             __OnLogin(0, "Device", SystemInfo.deviceUniqueIdentifier, string.Empty, default(GameChannelToken));
@@ -221,6 +221,11 @@ public abstract class GameUser : MonoBehaviour
             __Login();
         else
             StartCoroutine(userData.Activate(code, Shared.channelName, Shared.channelUser, __OnActivate));
+    }
+
+    protected virtual void __OnLogout()
+    {
+        Login();
     }
 
     private void __OnCheck(IGameUserData.UserStatus userStatus)
@@ -289,8 +294,8 @@ public abstract class GameUser : MonoBehaviour
         Shared._bind = null;
         Shared._unbind = null;
 
-        if (Shared._onloginStatusChanged != null)
-            Shared._onloginStatusChanged(channelUser != null);
+        if (Shared._onLoginStatusChanged != null)
+            Shared._onLoginStatusChanged(channelUser != null);
 
         if (this == null)
             return;
@@ -363,7 +368,7 @@ public abstract class GameUser : MonoBehaviour
         if (channel == null)
             return false;
 
-        channel.RequestUserInfo(__OnLogin, Login);
+        channel.RequestUserInfo(__OnLogin, __OnLogout);
 
         return true;
     }

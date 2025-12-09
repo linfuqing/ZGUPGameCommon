@@ -82,7 +82,9 @@ public class GameAssetObject : AssetObjectBase, IGameSceneLoader
     {
         print($"Asset {gameObject.name} load complete.");
 
-        __SetStatic(gameObject);
+        StaticBatchingUtility.Combine(gameObject);
+
+        //__SetStatic(gameObject);
         
         if(_onLoaded != null)
             _onLoaded.Invoke(gameObject);

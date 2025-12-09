@@ -401,7 +401,8 @@ public class GameAssetManager : MonoBehaviour
         if (string.IsNullOrEmpty(nextSceneName) && sceneName == name)
             return false;
         
-        __onSceneLoadedComplete = onComplete;
+        if(onComplete != null)
+            __onSceneLoadedComplete += onComplete;
         
         if (nextSceneName == name)
             return true;
