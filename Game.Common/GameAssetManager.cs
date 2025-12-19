@@ -349,10 +349,10 @@ public class GameAssetManager : MonoBehaviour
         nextSceneName = defaultSceneName;
 
         var progressbar = GameProgressbar.instance;
-        progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
-
         while (progressbar.isProgressing)
             yield return null;
+
+        progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
 
         if (__sceneCoroutineIndex != -1)
         {
