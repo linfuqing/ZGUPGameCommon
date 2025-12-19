@@ -62,13 +62,8 @@ public class GameProgressbar : MonoBehaviour
         private set;
     }
 
-    public bool isProgressing
-    {
-        get
-        {
-            return __instances[(int)ProgressbarType.LoadScene].refCount > 0 || __instances[(int)ProgressbarType.Other].refCount > 0;
-        }
-    }
+    public bool isProgressing =>
+        __instances != null && (__instances[(int)ProgressbarType.LoadScene].refCount > 0 || __instances[(int)ProgressbarType.Other].refCount > 0);
 
     public int BeginCoroutine()
     {
