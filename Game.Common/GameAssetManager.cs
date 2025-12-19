@@ -346,8 +346,21 @@ public class GameAssetManager : MonoBehaviour
         IGameAssetUnzipper[] unzippers = null, 
         params AssetPath[] paths)
     {
+        nextSceneName = defaultSceneName;
+
+        __onSceneLoadedComplete = null;
+        
         var progressBar = GameProgressbar.instance;
         progressBar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
+
+        if (__sceneCoroutineIndex != -1)
+        {
+            var coroutine = progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.LoadScene, __sceneCoroutineIndex);
+            if(coroutine != null)
+                StopCoroutine(coroutine);
+        }
+
+        __sceneCoroutineIndex = progressBar.StartCoroutine(null);
 
         string language = GameLanguage.overrideLanguage;
 
@@ -358,11 +371,7 @@ public class GameAssetManager : MonoBehaviour
 
         yield return __LoadAssets(assetURL, paths, unzippers);
 
-        __onSceneLoadedComplete = null;
-        
-        nextSceneName = defaultSceneName;
-
-        yield return __LoadScene(isWaitingForSceneLoaders, -1, sceneActivation);
+        yield return __LoadScene(isWaitingForSceneLoaders, __sceneCoroutineIndex, sceneActivation);
 
         progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
@@ -670,8 +679,13 @@ public class GameAssetManager : MonoBehaviour
     {
         var progressbar = GameProgressbar.instance;
 
-        if(progressbar != null)
+        if (progressbar != null)
+        {
+            while (progressbar.isProgressing)
+                yield return null;
+            
             progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.LoadScene, coroutineIndex);
+        }
 
         //等待断开连接的对象调用OnDestroy
         yield return null;
