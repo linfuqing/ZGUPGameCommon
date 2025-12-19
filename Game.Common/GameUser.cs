@@ -198,7 +198,7 @@ public abstract class GameUser : MonoBehaviour
             if (onSingleton != null)
                 onSingleton.Invoke();
 
-            channel.RequestUserInfo(__OnLogin, __OnLogout);
+            channel.RequestUserInfo(__OnLogin, _OnLogout);
         }
         else if (channels == null || channels.Length < 1)
             __OnLogin(0, "Device", SystemInfo.deviceUniqueIdentifier, string.Empty, default(GameChannelToken));
@@ -223,7 +223,7 @@ public abstract class GameUser : MonoBehaviour
             StartCoroutine(userData.Activate(code, Shared.channelName, Shared.channelUser, __OnActivate));
     }
 
-    protected virtual void __OnLogout()
+    protected virtual void _OnLogout()
     {
         Login();
     }
@@ -368,7 +368,7 @@ public abstract class GameUser : MonoBehaviour
         if (channel == null)
             return false;
 
-        channel.RequestUserInfo(__OnLogin, __OnLogout);
+        channel.RequestUserInfo(__OnLogin, _OnLogout);
 
         return true;
     }

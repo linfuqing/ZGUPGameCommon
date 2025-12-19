@@ -294,6 +294,11 @@ public class GameAssetManager : MonoBehaviour
             onComplete.Invoke(languagePackage);
     }
 
+    public bool IsSceneLoaded(string name)
+    {
+        return string.IsNullOrEmpty(nextSceneName) && sceneName == name;
+    }
+
     public void SetSceneLoader(IGameSceneLoader loader)
     {
         if (!isSceneLoading)
@@ -396,16 +401,16 @@ public class GameAssetManager : MonoBehaviour
         return true;
     }
 
-    public bool LoadScene(string name, Action onComplete, IEnumerator activation = null, bool isWaitingForSceneLoaders = true)
+    public void LoadScene(string name, Action onComplete, IEnumerator activation = null, bool isWaitingForSceneLoaders = true)
     {
-        if (string.IsNullOrEmpty(nextSceneName) && sceneName == name)
-            return false;
+        /*if (string.IsNullOrEmpty(nextSceneName) && sceneName == name)
+            return false;*/
         
         if(onComplete != null)
             __onSceneLoadedComplete += onComplete;
-        
+
         if (nextSceneName == name)
-            return true;
+            return;// true;
 
         //StopLoadingScene();
 
@@ -423,7 +428,7 @@ public class GameAssetManager : MonoBehaviour
                 progressbar.EndCoroutine(__sceneCoroutineIndex, coroutine);
         }
 
-        return true;
+        //return true;
     }
 
     public void LoadAssets(
