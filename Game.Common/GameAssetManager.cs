@@ -348,19 +348,20 @@ public class GameAssetManager : MonoBehaviour
     {
         nextSceneName = defaultSceneName;
 
-        __onSceneLoadedComplete = null;
-        
-        var progressBar = GameProgressbar.instance;
-        progressBar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
+        var progressbar = GameProgressbar.instance;
+        progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
+
+        while (progressbar.isProgressing)
+            yield return null;
 
         if (__sceneCoroutineIndex != -1)
         {
-            var coroutine = progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.LoadScene, __sceneCoroutineIndex);
+            var coroutine = progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.LoadScene, __sceneCoroutineIndex);
             if(coroutine != null)
                 StopCoroutine(coroutine);
         }
 
-        __sceneCoroutineIndex = progressBar.StartCoroutine(null);
+        __sceneCoroutineIndex = progressbar.StartCoroutine(null);
 
         string language = GameLanguage.overrideLanguage;
 
@@ -373,7 +374,7 @@ public class GameAssetManager : MonoBehaviour
 
         yield return __LoadScene(isWaitingForSceneLoaders, __sceneCoroutineIndex, sceneActivation);
 
-        progressBar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
+        progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
 
     public IEnumerator Init(
@@ -680,12 +681,7 @@ public class GameAssetManager : MonoBehaviour
         var progressbar = GameProgressbar.instance;
 
         if (progressbar != null)
-        {
-            while (progressbar.isProgressing)
-                yield return null;
-            
             progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.LoadScene, coroutineIndex);
-        }
 
         //等待断开连接的对象调用OnDestroy
         yield return null;
