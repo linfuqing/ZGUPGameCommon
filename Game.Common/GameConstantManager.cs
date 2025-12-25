@@ -29,7 +29,7 @@ public class GameConstantManager : UnityEngine.MonoBehaviour
 
     public static string Get(string key)
     {
-        if (__args.TryGetValue(key, out string value))
+        if (__args != null && __args.TryGetValue(key, out string value))
             return value;
 
         return null;
