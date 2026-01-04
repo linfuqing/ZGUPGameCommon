@@ -89,7 +89,7 @@ public class GameProgressbar : MonoBehaviour
         return __coroutines.Add(coroutine);
     }
 
-    public void ShowProgressBar(ProgressbarType type, int coroutineIndex = -1)
+    public void ShowProgressBar(ProgressbarType type, int coroutineIndex = -1, float progress = 0.0f)
     {
         print($"Show Progress Bar : {type} : {coroutineIndex}");
 
@@ -128,7 +128,7 @@ public class GameProgressbar : MonoBehaviour
             progressbarInfo.onInfo.Invoke(string.Empty);
 
         if (progressbarInfo.progressbar != null)
-            progressbarInfo.progressbar.Reset(0.0f);
+            progressbarInfo.progressbar.Reset(progress);
 
         ++instance.refCount;
     }
@@ -183,7 +183,7 @@ public class GameProgressbar : MonoBehaviour
         return coroutine;
     }
 
-    public void ShowProgressBar() => ShowProgressBar(ProgressbarType.Other, -1);
+    public void ShowProgressBar(float progress = 0.0f) => ShowProgressBar(ProgressbarType.Other, -1, progress);
 
     public void UpdateProgressBar(float progress) => UpdateProgressBar(ProgressbarType.Other, progress);
 

@@ -9,7 +9,7 @@ using System.IO;
 
 public class GameConstantManager : UnityEngine.MonoBehaviour
 {
-    public const string KEY_MARKET = "Market";
+    //public const string KEY_MARKET = "Market";
     public const string KEY_CHANNEL = "Channel";
     public const string KEY_CHANNEL_API = "ChannelAPI";
     public const string KEY_CDN_URL = "CDNURL";
