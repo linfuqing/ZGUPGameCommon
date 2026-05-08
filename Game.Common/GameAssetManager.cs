@@ -783,6 +783,10 @@ public class GameAssetManager : MonoBehaviour
 
                 } while (!sceneLoader.isDone);
 
+                yield return Resources.UnloadUnusedAssets();
+            
+                GC.Collect();
+                
                 ++doneCount;
             }
             

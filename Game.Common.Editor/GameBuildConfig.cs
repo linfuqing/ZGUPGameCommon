@@ -21,7 +21,7 @@ public partial class GameBuildConfig : ScriptableObject
 
             public void Apply(string folderPath, BuildTarget buildTarget)
             {
-                if (this.buildTarget != 0 && this.buildTarget != buildTarget)
+                if (this.buildTarget != BuildTarget.NoTarget && this.buildTarget != buildTarget)
                     return;
 
                 var path = Path.Combine(Application.dataPath, destinationPath);
