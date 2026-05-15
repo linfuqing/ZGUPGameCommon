@@ -191,6 +191,8 @@ public class GameAssetManager : MonoBehaviour
         private set;
     }
 
+    public event Action onAllAssetsLoaded;
+
     public bool isSceneLoading => __sceneCoroutineIndex != -1 || nextSceneName != null;
 
     public float speed => __tachometer.value;
@@ -627,6 +629,9 @@ public class GameAssetManager : MonoBehaviour
                 progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Verify);
             }
         }
+        
+        if(onAllAssetsLoaded != null)
+            onAllAssetsLoaded();
     }
 
     private IEnumerator __LoadAssets(
