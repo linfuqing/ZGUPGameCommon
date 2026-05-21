@@ -191,8 +191,6 @@ public class GameAssetManager : MonoBehaviour
         private set;
     }
 
-    public event Action onAllAssetsLoaded;
-
     public bool isSceneLoading => __sceneCoroutineIndex != -1 || nextSceneName != null;
 
     public float speed => __tachometer.value;
@@ -344,6 +342,7 @@ public class GameAssetManager : MonoBehaviour
         string path, 
         string url, 
         IAssetBundleFactory factory = null, 
+        IEnumerator actionBeforeLoadScene = null, 
         IEnumerator sceneActivation = null, 
         IGameAssetUnzipper[] unzippers = null, 
         params AssetPath[] paths)
@@ -374,6 +373,9 @@ public class GameAssetManager : MonoBehaviour
 
         yield return __LoadAssets(assetURL, paths, unzippers);
 
+        if (actionBeforeLoadScene != null)
+            yield return actionBeforeLoadScene;
+
         yield return __LoadScene(isWaitingForSceneLoaders, __sceneCoroutineIndex, sceneActivation);
 
         progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
@@ -385,6 +387,7 @@ public class GameAssetManager : MonoBehaviour
         string path,
         string url,
         IAssetBundleFactory factory = null, 
+        IEnumerator actionBeforeLoadScene = null, 
         IEnumerator sceneActivation = null, 
         params IGameAssetUnzipper[] unzippers)
     {
@@ -394,6 +397,7 @@ public class GameAssetManager : MonoBehaviour
             path, 
             url, 
             factory,
+            actionBeforeLoadScene, 
             sceneActivation, 
             unzippers, 
             new AssetPath(scenePath, GameLanguage.overrideLanguage));
@@ -629,9 +633,6 @@ public class GameAssetManager : MonoBehaviour
                 progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Verify);
             }
         }
-        
-        if(onAllAssetsLoaded != null)
-            onAllAssetsLoaded();
     }
 
     private IEnumerator __LoadAssets(
@@ -770,6 +771,10 @@ public class GameAssetManager : MonoBehaviour
             float progress;
             while (__sceneLoaders.TryTake(out var sceneLoader))
             {
+                yield return Resources.UnloadUnusedAssets();
+            
+                GC.Collect();
+
                 do
                 {
                     yield return null;
@@ -788,10 +793,6 @@ public class GameAssetManager : MonoBehaviour
 
                 } while (!sceneLoader.isDone);
 
-                yield return Resources.UnloadUnusedAssets();
-            
-                GC.Collect();
-                
                 ++doneCount;
             }
             
