@@ -15,6 +15,13 @@ public interface IGameAssetUnzipper
     IEnumerator Execute(AssetBundle assetBundle, AssetManager.DownloadHandler downloadHandler);
 }
 
+public interface IGameSceneActivation
+{
+    IEnumerator Init(string sceneName);
+    
+    void Dispose();
+}
+
 public interface IGameSceneLoader
 {
     bool isDone { get; }
@@ -131,7 +138,7 @@ public class GameAssetManager : MonoBehaviour
         {
             get
             {
-                return string.IsNullOrEmpty(filePrefix) ? value : Path.Combine(filePrefix, value);
+                return string.IsNullOrEmpty(filePrefix) ? value : AssetFileUtility.Combine(filePrefix, value);
             }
         }
 
@@ -176,6 +183,9 @@ public class GameAssetManager : MonoBehaviour
 
     private int __sceneCoroutineIndex = -1;
     private Action __onSceneLoadedComplete;
+    
+    private IGameSceneActivation __sceneActivation;
+
     private Coroutine __assetCoroutine;
 
     private Tachometer __tachometer;
@@ -238,6 +248,10 @@ public class GameAssetManager : MonoBehaviour
 
     public static string GetStreamingAssetsURL(string path)
     {
+        ulong offset = 0;
+        if (AssetUtility.UpdatePack(AssetManager.DefaultAssetPackHeader.NAME, ref path, ref offset))
+            return path;
+        
         if (string.IsNullOrEmpty(path))
             return __GetStreamingAssetsURL(Application.streamingAssetsPath);
 
@@ -250,18 +264,18 @@ public class GameAssetManager : MonoBehaviour
         IAssetBundleFactory factory, 
         Action<GameObject> onComplete)
     {
-        string language = GameLanguage.overrideLanguage, 
-            persistentDataPath = Path.Combine(Application.persistentDataPath, language), 
+        string language = GameLanguage.overrideLanguage,
+            persistentDataPath = AssetFileUtility.Combine(AssetFileUtility.persistentDataPath, language),
             //languagePackageResourcePath = GameConstantManager.Get(LanguagePackageResourcePath), 
-            folder = Path.GetDirectoryName(path), 
-            filename = Path.GetFileName(folder), 
-            filepath = Path.Combine(folder, filename);
-        var assetManager = new AssetManager(Path.Combine(
+            folder = AssetFileUtility.GetDirectoryName(path),
+            filename = AssetFileUtility.GetFileName(folder),
+            filepath = AssetFileUtility.Combine(folder, filename);
+        var assetManager = new AssetManager(AssetFileUtility.Combine(
             persistentDataPath, 
             filepath), 
             factory);
 
-        string fullFilepath = Path.Combine(language, filepath);
+        string fullFilepath = AssetFileUtility.Combine(language, filepath);
         var assetPath = new ZG.AssetPath(
             GetStreamingAssetsURL(fullFilepath), 
             string.Empty, 
@@ -281,7 +295,7 @@ public class GameAssetManager : MonoBehaviour
             yield return assetManager.GetOrDownload(null, null, assetPath);
         }
 
-        string name = Path.GetFileName(path);
+        string name = AssetFileUtility.GetFileName(path);
         var loader = new AssetBundleLoader<GameObject>(name.ToLower(), name, assetManager);
 
         yield return loader;
@@ -343,7 +357,7 @@ public class GameAssetManager : MonoBehaviour
         string url, 
         IAssetBundleFactory factory = null, 
         IEnumerator actionBeforeLoadScene = null, 
-        IEnumerator sceneActivation = null, 
+        IGameSceneActivation sceneActivation = null, 
         IGameAssetUnzipper[] unzippers = null, 
         params AssetPath[] paths)
     {
@@ -366,8 +380,8 @@ public class GameAssetManager : MonoBehaviour
 
         string language = GameLanguage.overrideLanguage;
 
-        string persistentDataPath = Path.Combine(Application.persistentDataPath, language);
-        __assetManager = new AssetManager(Path.Combine(persistentDataPath, path), factory);
+        string persistentDataPath = AssetFileUtility.Combine(AssetFileUtility.persistentDataPath, language);
+        __assetManager = new AssetManager(AssetFileUtility.Combine(persistentDataPath, path), factory);
 
         string assetURL = url == null ? null : $"{url}/{Application.platform}/{language}";
 
@@ -388,7 +402,7 @@ public class GameAssetManager : MonoBehaviour
         string url,
         IAssetBundleFactory factory = null, 
         IEnumerator actionBeforeLoadScene = null, 
-        IEnumerator sceneActivation = null, 
+        IGameSceneActivation sceneActivation = null, 
         params IGameAssetUnzipper[] unzippers)
     {
         return Init(
@@ -417,7 +431,7 @@ public class GameAssetManager : MonoBehaviour
         return true;
     }
 
-    public void LoadScene(string name, Action onComplete, IEnumerator activation = null, bool isWaitingForSceneLoaders = true)
+    public void LoadScene(string name, Action onComplete, IGameSceneActivation activation = null, bool isWaitingForSceneLoaders = true)
     {
         /*if (string.IsNullOrEmpty(nextSceneName) && sceneName == name)
             return false;*/
@@ -551,7 +565,7 @@ public class GameAssetManager : MonoBehaviour
         for (int i = 0; i < length; ++i)
         {
             path = paths[i];
-            folder = Path.GetDirectoryName(path.value);
+            folder = AssetFileUtility.GetDirectoryName(path.value);
 
             if (!string.IsNullOrEmpty(folder))
                 __assetManager.LoadFrom(path.value);
@@ -682,7 +696,7 @@ public class GameAssetManager : MonoBehaviour
         __assetCoroutine = null;
     }
 
-    private IEnumerator __LoadScene(bool isWaitingForSceneLoaders, int coroutineIndex, IEnumerator activation)
+    private IEnumerator __LoadScene(bool isWaitingForSceneLoaders, int coroutineIndex, IGameSceneActivation activation)
     {
         var progressbar = GameProgressbar.instance;
 
@@ -697,7 +711,7 @@ public class GameAssetManager : MonoBehaviour
             string sceneName = this.sceneName;
             if (!string.IsNullOrEmpty(sceneName))
             {
-                var scene = SceneManager.GetSceneByName(Path.GetFileNameWithoutExtension(sceneName));
+                var scene = SceneManager.GetSceneByName(AssetFileUtility.GetFileNameWithoutExtension(sceneName));
                 if (scene.IsValid())
                 {
                     while (!scene.isLoaded)
@@ -717,6 +731,13 @@ public class GameAssetManager : MonoBehaviour
 
                 if (__assetManager != null)
                     __assetManager.UnloadAssetBundle(sceneName);
+
+                if (__sceneActivation != null)
+                {
+                    __sceneActivation.Dispose();
+
+                    __sceneActivation = null;
+                }
                 
                 yield return Resources.UnloadUnusedAssets();
             
@@ -734,11 +755,22 @@ public class GameAssetManager : MonoBehaviour
                     isWaitingForSceneLoaders ? __LoadingSceneAndWaitingForLoaders : __LoadingScene, 
                     x => assetBundle = x);
 
-            var asyncOperation = SceneManager.LoadSceneAsync(Path.GetFileNameWithoutExtension(nextSceneName), LoadSceneMode.Single);
+            var asyncOperation = SceneManager.LoadSceneAsync(AssetFileUtility.GetFileNameWithoutExtension(nextSceneName), LoadSceneMode.Single);
             if (asyncOperation != null)
             {
-                asyncOperation.allowSceneActivation = activation == null;
-                
+                IEnumerator activationEnumerator;
+                if (activation == null)
+                    activationEnumerator = null;
+                else
+                {
+                    asyncOperation.allowSceneActivation = activation == null;
+
+                    // Pass the scene being loaded (nextSceneName), not the previous this.sceneName snapshot.
+                    activationEnumerator = activation.Init(nextSceneName);
+                    
+                    __sceneActivation = activation;
+                }
+
                 while (!asyncOperation.isDone)
                 {
                     if(progressbar != null)
@@ -746,7 +778,7 @@ public class GameAssetManager : MonoBehaviour
                             GameProgressbar.ProgressbarType.LoadScene, 
                             asyncOperation.progress * 0.1f + (isWaitingForSceneLoaders ? 0.1f : 0.9f));
 
-                    if (activation != null && !activation.MoveNext())
+                    if (activationEnumerator != null && !activationEnumerator.MoveNext())
                         asyncOperation.allowSceneActivation = true;
 
                     yield return null;

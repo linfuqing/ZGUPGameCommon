@@ -14,13 +14,13 @@ public class GameBuildProcessor : EditorWindow
 {
     public struct Processor : IPreprocessBuildWithReport, IPostprocessBuildWithReport
     {
-        public int callbackOrder
-        {
+        public int callbackOrder => -1;
+        /*{
             get
             {
                 return -1;
             }
-        }
+        }*/
 
         public void OnPreprocessBuild(BuildReport report)
         {
