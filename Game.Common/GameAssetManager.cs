@@ -17,6 +17,16 @@ public interface IGameAssetUnzipper
 
 public interface IGameSceneActivation
 {
+    public bool isInitialized
+    {
+        get; 
+    }
+
+    float initializedProgress
+    {
+        get;
+    }
+    
     IEnumerator Init(string sceneName);
     
     void Dispose();
@@ -27,6 +37,8 @@ public interface IGameSceneLoader
     bool isDone { get; }
     
     float progress { get; }
+    
+    string fileName { get; }
 }
 
 public class GameAssetManager : MonoBehaviour
@@ -714,6 +726,8 @@ public class GameAssetManager : MonoBehaviour
                 var scene = SceneManager.GetSceneByName(AssetFileUtility.GetFileNameWithoutExtension(sceneName));
                 if (scene.IsValid())
                 {
+                    Debug.Log($"Waiting for scene loading complete..");
+
                     while (!scene.isLoaded)
                         yield return null;
 
@@ -748,6 +762,8 @@ public class GameAssetManager : MonoBehaviour
 
             this.sceneName = nextSceneName;
 
+            Debug.Log($"Load Asset Bundle {nextSceneName}..");
+
             AssetBundle assetBundle = null;
             if (__assetManager != null)
                 yield return __assetManager.LoadAssetBundleAsync(
@@ -755,30 +771,44 @@ public class GameAssetManager : MonoBehaviour
                     isWaitingForSceneLoaders ? __LoadingSceneAndWaitingForLoaders : __LoadingScene, 
                     x => assetBundle = x);
 
+            float progress;
+            Coroutine coroutine;
             var asyncOperation = SceneManager.LoadSceneAsync(AssetFileUtility.GetFileNameWithoutExtension(nextSceneName), LoadSceneMode.Single);
-            if (asyncOperation != null)
+            if (asyncOperation == null)
+                coroutine = null;
+            else
             {
-                IEnumerator activationEnumerator;
                 if (activation == null)
-                    activationEnumerator = null;
+                    coroutine = null;
                 else
                 {
-                    asyncOperation.allowSceneActivation = activation == null;
+                    asyncOperation.allowSceneActivation = false;
 
                     // Pass the scene being loaded (nextSceneName), not the previous this.sceneName snapshot.
-                    activationEnumerator = activation.Init(nextSceneName);
+                    coroutine = StartCoroutine(activation.Init(nextSceneName));
                     
                     __sceneActivation = activation;
                 }
 
                 while (!asyncOperation.isDone)
                 {
-                    if(progressbar != null)
-                        progressbar.UpdateProgressBar(
-                            GameProgressbar.ProgressbarType.LoadScene, 
-                            asyncOperation.progress * 0.1f + (isWaitingForSceneLoaders ? 0.1f : 0.9f));
+                    if (progressbar != null)
+                    {
+                        progress = asyncOperation.progress;
+                        if (activation == null)
+                            progress *= 0.1f;
+                        else
+                            progress = (progress + activation.initializedProgress) * 0.05f;
 
-                    if (activationEnumerator != null && !activationEnumerator.MoveNext())
+                        if(!isWaitingForSceneLoaders)
+                            progress += 0.9f;
+
+                        progressbar.UpdateProgressBar(
+                            GameProgressbar.ProgressbarType.LoadScene,
+                            progress);
+                    }
+
+                    if (activation != null && activation.isInitialized)
                         asyncOperation.allowSceneActivation = true;
 
                     yield return null;
@@ -799,14 +829,13 @@ public class GameAssetManager : MonoBehaviour
             
             //Debug.LogError("Start Scene Load");
             
+            yield return Resources.UnloadUnusedAssets();
+            
+            GC.Collect();
+
             int doneCount = 0, loadingCount;
-            float progress;
             while (__sceneLoaders.TryTake(out var sceneLoader))
             {
-                yield return Resources.UnloadUnusedAssets();
-            
-                GC.Collect();
-
                 do
                 {
                     yield return null;
@@ -826,7 +855,14 @@ public class GameAssetManager : MonoBehaviour
                 } while (!sceneLoader.isDone);
 
                 ++doneCount;
+                
+                yield return Resources.UnloadUnusedAssets();
+            
+                GC.Collect();
             }
+ 
+            if (coroutine != null)
+                yield return coroutine;
             
             /*if (assetBundle != null)
                 assetBundle.Unload(false);*/
