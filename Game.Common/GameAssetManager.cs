@@ -374,12 +374,12 @@ public class GameAssetManager : MonoBehaviour
         params AssetPath[] paths)
     {
         nextSceneName = defaultSceneName;
-
+ 
         var progressbar = GameProgressbar.instance;
         while (progressbar.isProgressing)
             yield return null;
 
-        progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
+        //progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
 
         if (__sceneCoroutineIndex != -1)
         {
@@ -404,7 +404,7 @@ public class GameAssetManager : MonoBehaviour
 
         yield return __LoadScene(isWaitingForSceneLoaders, __sceneCoroutineIndex, sceneActivation);
 
-        progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
+        //progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
     }
 
     public IEnumerator Init(
@@ -795,13 +795,11 @@ public class GameAssetManager : MonoBehaviour
                     if (progressbar != null)
                     {
                         progress = asyncOperation.progress;
-                        if (activation == null)
-                            progress *= 0.1f;
-                        else
-                            progress = (progress + activation.initializedProgress) * 0.05f;
-
-                        if(!isWaitingForSceneLoaders)
-                            progress += 0.9f;
+                        if (activation != null)
+                            progress = (progress + activation.initializedProgress) * 0.5f;
+                        
+                        if(isWaitingForSceneLoaders)
+                            progress *= 0.2f;
 
                         progressbar.UpdateProgressBar(
                             GameProgressbar.ProgressbarType.LoadScene,
