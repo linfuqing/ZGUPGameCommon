@@ -14,6 +14,7 @@ public class GameProgressbar : MonoBehaviour
         Download,
         LoadScene,
         Other,
+        Init
     }
 
     [Serializable]

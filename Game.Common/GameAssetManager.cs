@@ -379,7 +379,7 @@ public class GameAssetManager : MonoBehaviour
         while (progressbar.isProgressing)
             yield return null;
 
-        //progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Other);
+        progressbar.ShowProgressBar(GameProgressbar.ProgressbarType.Init);
 
         if (__sceneCoroutineIndex != -1)
         {
@@ -404,7 +404,7 @@ public class GameAssetManager : MonoBehaviour
 
         yield return __LoadScene(isWaitingForSceneLoaders, __sceneCoroutineIndex, sceneActivation);
 
-        //progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Other);
+        progressbar.ClearProgressBar(GameProgressbar.ProgressbarType.Init);
     }
 
     public IEnumerator Init(
